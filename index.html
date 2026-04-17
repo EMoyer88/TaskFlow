@@ -358,7 +358,7 @@ async function initAuth(){
   }
   try{
     msalInstance=new msal.PublicClientApplication({
-      auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:"https://admoyer.sharepoint.com/sites/Accounting/Shared%20Documents/General/Important%20Documents/TaskFlow%20Program/taskflow.html?web=1"},
+      auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:"https://emoyer88.github.io/TaskFlow/"},
       cache:{cacheLocation:'sessionStorage'}
     });
     await msalInstance.initialize();

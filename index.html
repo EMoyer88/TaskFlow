@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow</title>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c1:#185FA5;--c1l:#E6F1FB;--c1m:#B5D4F4;
+  --bg:#F4F6F9;--white:#ffffff;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:#e2e6ed;--border2:#c8d0db;
+  --radius:8px;--radius-lg:12px;
+  --sidebar:220px;
+  --success-bg:#EAF3DE;--success:#3B6D11;--success-border:#C0DD97;
+  --danger-bg:#FCEBEB;--danger:#A32D2D;--danger-border:#F7C1C1;
+  --warn-bg:#FAEEDA;--warn:#854F0B;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:var(--sidebar);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:16px 14px 12px;font-size:15px;font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--c1)}
+.logo-icon{width:28px;height:28px;background:var(--c1);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2}
+.sidebar-nav{padding:10px 6px;flex:1;overflow-y:auto}
+.nav-section{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 8px 4px;margin-top:4px}
+.nav-item{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;user-select:none}
+.nav-item:hover{background:#f0f4f8;color:var(--text)}
+.nav-item.active{background:var(--c1l);color:var(--c1);font-weight:500}
+.nav-item svg{width:14px;height:14px;flex-shrink:0}
+.badge{margin-left:auto;background:#eef2f7;color:var(--text2);font-size:10px;padding:1px 6px;border-radius:8px;font-weight:500}
+.nav-item.active .badge{background:var(--c1m);color:var(--c1)}
+.sync-panel{padding:10px 12px;border-top:1px solid var(--border)}
+.sync-status{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);margin-bottom:7px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+.sync-dot.on{background:#639922}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:0 18px;height:50px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--white);flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:600;flex:1}
+.view-tabs{display:flex;gap:1px;background:#eef2f7;padding:3px;border-radius:var(--radius)}
+.tab{padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;color:var(--text2);transition:all .15s}
+.tab.active{background:var(--white);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--white);color:var(--text);font-size:12.5px;cursor:pointer;transition:all .15s;font-family:inherit;font-weight:500}
+.btn:hover{background:#f5f7fa;border-color:#b0bcc8}
+.btn-primary{background:var(--c1);color:#fff;border-color:var(--c1)}
+.btn-primary:hover{background:#1452a0;border-color:#1452a0}
+.btn svg{width:13px;height:13px}
+.content{flex:1;overflow-y:auto;padding:18px}
+
+/* Filter bar */
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search{flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--white);color:var(--text);font-family:inherit}
+.search:focus{outline:none;border-color:var(--c1);box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+select.fsel{padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12.5px;background:var(--white);color:var(--text2);font-family:inherit;cursor:pointer}
+
+/* Task cards */
+.task-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative;user-select:none}
+.task-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.task-card.completed{opacity:.55}
+.task-card.dragging{opacity:.35;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.task-card.drop-left::before{content:'Add as subtask';position:absolute;left:0;top:0;bottom:0;width:50%;background:rgba(234,243,222,.9);border:2px dashed #639922;border-radius:var(--radius-lg) 0 0 var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#3B6D11;pointer-events:none;z-index:2}
+.task-card.drop-right::after{content:'Set as dependency';position:absolute;right:0;top:0;bottom:0;width:50%;background:rgba(238,237,254,.9);border:2px dashed #534AB7;border-radius:0 var(--radius-lg) var(--radius-lg) 0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#534AB7;pointer-events:none;z-index:2}
+.task-header{display:flex;align-items:flex-start;gap:8px}
+.drag-handle{color:var(--text3);font-size:13px;cursor:grab;padding:1px 2px;flex-shrink:0;margin-top:1px;opacity:.4;transition:opacity .15s}
+.drag-handle:hover{opacity:.8}
+.task-check{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.task-check:hover{border-color:var(--c1)}
+.task-check.done{background:var(--c1);border-color:var(--c1)}
+.task-check.done::after{content:'';width:5px;height:5px;border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(45deg) translate(-1px,-1px);display:block}
+.task-title{font-size:13.5px;font-weight:500;flex:1;line-height:1.4}
+.task-title.done{text-decoration:line-through;color:var(--text3)}
+.task-meta{display:flex;align-items:center;gap:5px;margin-top:7px;margin-left:25px;flex-wrap:wrap}
+.chip{font-size:10.5px;padding:2px 7px;border-radius:8px;font-weight:500}
+.chip-high{background:#FCEBEB;color:#A32D2D}
+.chip-med{background:#FAEEDA;color:#854F0B}
+.chip-low{background:#EAF3DE;color:#3B6D11}
+.chip-assign{background:#f0f4f8;color:var(--text2)}
+.chip-date{background:var(--c1l);color:var(--c1)}
+.chip-date.overdue{background:#FCEBEB;color:#A32D2D}
+.chip-recur{background:#FBEAF0;color:#993556}
+.chip-dep{background:#EEEDFE;color:#534AB7}
+.progress-bar{height:3px;background:#eef2f7;border-radius:2px;margin:7px 0 0 25px;overflow:hidden}
+.progress-fill{height:100%;background:var(--c1);border-radius:2px;transition:width .3s}
+.sub-count{font-size:11px;color:var(--text3);margin-top:3px;margin-left:25px}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer;user-select:none}
+.section-hdr:hover .section-lbl{color:var(--text2)}
+.section-lbl{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+.section-toggle{font-size:11px;color:var(--text3);transition:transform .2s}
+.section-toggle.collapsed{transform:rotate(-90deg)}
+.section-body{transition:all .2s}
+.chip-future{background:#EEEDFE;color:#534AB7}
+.chip-recurring-inst{background:#FBEAF0;color:#993556;font-size:9.5px}
+.drag-hint{text-align:center;font-size:11px;color:var(--text3);padding:4px 0 12px;display:flex;align-items:center;justify-content:center;gap:16px}
+.drag-hint span{display:flex;align-items:center;gap:5px}
+.dhdot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* Calendar */
+.cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.cal-nav h3{font-size:15px;font-weight:600;flex:1;text-align:center}
+.cal-wrap{width:100%}
+.cal-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;table-layout:fixed}
+.cal-th{background:#f5f7fa;padding:8px 4px;text-align:center;font-size:10.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);width:calc(100%/7)}
+.cal-td{vertical-align:top;padding:5px;height:85px;border:1px solid var(--border);width:calc(100%/7)}
+.cal-td.other{background:#fafbfc;opacity:.6}
+.cal-date{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:var(--text2);margin-bottom:3px;border-radius:50%}
+.cal-td.today .cal-date{background:var(--c1);color:#fff;font-weight:600}
+.cal-chip{font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:var(--c1l);color:var(--c1);line-height:1.4;font-weight:500}
+.cal-chip.high{background:#FCEBEB;color:#A32D2D}
+.cal-chip.done{background:#f0f4f8;color:var(--text3)}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto}
+.modal{background:var(--white);border-radius:var(--radius-lg);width:100%;max-width:620px;box-shadow:0 10px 40px rgba(0,0,0,.18);overflow:hidden}
+.modal-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-hdr h2{font-size:15px;font-weight:600}
+.modal-x{cursor:pointer;color:var(--text2);background:none;border:none;font-size:18px;line-height:1;padding:2px 6px;border-radius:4px;font-family:inherit}
+.modal-x:hover{background:#f0f4f8}
+.modal-body{padding:20px;max-height:74vh;overflow-y:auto}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.form-row input,.form-row textarea,.form-row select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--white);color:var(--text);font-family:inherit}
+.form-row input:focus,.form-row textarea:focus,.form-row select:focus{outline:none;border-color:var(--c1);box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+.form-row textarea{resize:vertical;min-height:72px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rem-row{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.rem-row select{flex:1;font-size:12px;padding:5px 7px}
+
+/* Detail panel */
+.detail-panel{position:fixed;right:0;top:0;bottom:0;width:370px;background:var(--white);border-left:1px solid var(--border);z-index:50;overflow-y:auto;transform:translateX(100%);transition:transform .22s ease;box-shadow:-4px 0 20px rgba(0,0,0,.08)}
+.detail-panel.open{transform:translateX(0)}
+.detail-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--white);position:sticky;top:0;z-index:1}
+.detail-body{padding:16px}
+.detail-sec{margin-bottom:18px}
+.detail-sec h4{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px}
+.note-box{background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:13px;line-height:1.6;color:var(--text2)}
+.completion-banner{background:var(--success-bg);border:1px solid var(--success-border);border-radius:var(--radius);padding:9px 12px;font-size:12.5px;color:var(--success);margin-bottom:14px;font-weight:500}
+.dep-item{display:flex;align-items:center;gap:7px;font-size:13px;padding:4px 0;color:var(--text2)}
+.subtask-row{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:13px;color:var(--text2)}
+.sub-check{width:14px;height:14px;border-radius:50%;border:1px solid var(--border2);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sub-check:hover{border-color:var(--c1)}
+.sub-check.done{background:var(--c1);border-color:var(--c1)}
+.sub-check.done::after{content:'';width:4px;height:4px;border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(45deg) translate(-1px,-1px);display:block}
+
+/* Sync modal */
+.sync-modal{background:var(--white);border-radius:var(--radius-lg);width:100%;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.18);overflow:hidden}
+.team-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.team-row:last-child{border-bottom:none}
+.toggle{width:36px;height:20px;border-radius:10px;background:#dde3ea;cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;border:none}
+.toggle.on{background:var(--c1)}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{left:19px}
+
+/* Loading/error states */
+.state-box{text-align:center;padding:60px 20px;color:var(--text3)}
+.state-box .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--c1);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-box{background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:var(--radius);padding:12px 14px;color:var(--danger);font-size:13px;margin-bottom:14px;line-height:1.5}
+
+/* Toast */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:9px 18px;border-radius:var(--radius);font-size:13px;z-index:300;transition:opacity .3s;white-space:nowrap;pointer-events:none;opacity:0}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     CONFIGURATION — update these if your site/tenant changes
+     ═══════════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  tenantId:  'dee35229-dd40-4531-bd95-7516bef36907',
+  clientId:  '887a424d-da71-4719-b9bc-940d431607d8',   // paste after Azure AD app registration
+  siteUrl:   'https://admoyer.sharepoint.com/sites/Accounting',
+  // List names exactly as created in SharePoint
+  lists: {
+    tasks:    'Tasks_List',
+    subtasks: 'Subtasks_List',
+    reminders:'Reminders_List'
+  }
+};
+
+// ── MSAL (Microsoft Auth) loaded from CDN ──────────────────
+// We load it async; auth won't work until clientId is filled in
+</script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+
+<div id="toast"></div>
+
+<div class="app" id="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/></svg></div>
+      TaskFlow
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section">Views</div>
+      <div class="nav-item active" onclick="setNav(this,'all','All Tasks')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+        All Tasks <span class="badge" id="b-all">0</span>
+      </div>
+      <div class="nav-item" onclick="setNav(this,'mine','My Tasks')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        My Tasks <span class="badge" id="b-mine">0</span>
+      </div>
+      <div class="nav-section">Status</div>
+      <div class="nav-item" onclick="setNav(this,'overdue','Overdue')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="8"/><circle cx="8" cy="11" r=".5" fill="currentColor"/></svg>
+        Overdue <span class="badge" id="b-overdue">0</span>
+      </div>
+      <div class="nav-item" onclick="setNav(this,'completed','Completed')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="5.5,8 7,9.5 10.5,6"/></svg>
+        Completed <span class="badge" id="b-done">0</span>
+      </div>
+      <div class="nav-section">Teams</div>
+      <div class="nav-item" onclick="setNav(this,'Accounting','Accounting')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg>
+        Accounting
+      </div>
+      <div class="nav-item" onclick="setNav(this,'A/R','A/R')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg>
+        A/R
+      </div>
+      <div class="nav-item" onclick="setNav(this,'A/P','A/P')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg>
+        A/P
+      </div>
+      <div class="nav-item" onclick="setNav(this,'H/R','H/R')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        H/R
+      </div>
+      <div class="nav-item" onclick="setNav(this,'Auto','Auto')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg>
+        Auto
+      </div>
+    </div>
+    <div class="sync-panel">
+      <div class="sync-status">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-lbl">Outlook: off</span>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;font-size:12px" onclick="openSyncModal()">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="12" height="10" rx="1"/><line x1="1" y1="5" x2="13" y2="5"/><line x1="4" y1="1" x2="4" y2="3"/><line x1="10" y1="1" x2="10" y2="3"/></svg>
+        Manage Outlook sync
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">All Tasks</div>
+      <div class="view-tabs">
+        <div class="tab active" onclick="setView('list',this)">List</div>
+        <div class="tab" onclick="setView('calendar',this)">Calendar</div>
+      </div>
+      <button class="btn" onclick="loadData()" style="font-size:12px">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,4 4,1 7,4"/><path d="M4 1v8a4 4 0 004 4h2"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-primary" onclick="openModal()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+        New Task
+      </button>
+    </div>
+    <div class="content" id="main-content">
+      <div class="state-box"><div class="spinner"></div><p>Connecting to SharePoint...</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div id="task-modal" style="display:none" class="modal-bg">
+<div class="modal">
+  <div class="modal-hdr"><h2 id="modal-title">New Task</h2><button class="modal-x" onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="form-row"><label>Task title *</label><input type="text" id="f-title" placeholder="Enter task name..."></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Assigned to</label>
+      <div style="position:relative">
+        <input type="text" id="f-assign" placeholder="Search people..." autocomplete="off" oninput="searchPeople(this.value)" onfocus="searchPeople(this.value)">
+        <div id="people-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:200;max-height:180px;overflow-y:auto"></div>
+      </div></div>
+      <div class="form-row"><label>Team</label><select id="f-team"><option value="">Select team...</option><option selected>Accounting</option><option>A/R</option><option>A/P</option><option>H/R</option><option>Auto</option></select></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Due date</label><input type="date" id="f-due" onchange="this.blur()"></div>
+      <div class="form-row"><label>Priority</label><select id="f-priority"><option value="Medium">Medium</option><option value="High">High</option><option value="Low" selected>Low</option></select></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Recurring</label><select id="f-recur" onchange="toggleRecurEnd()"><option value="">None</option><option>Daily</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Quarterly</option><option>Annually</option></select></div>
+    <div id="recur-end-row" style="display:none">
+      <div class="form-grid">
+        <div class="form-row"><label>End recurring</label><select id="f-recur-end" onchange="toggleRecurEndDate()"><option value="never">Never</option><option value="date">By date</option><option value="count">After occurrences</option></select></div>
+        <div class="form-row" id="recur-end-date-row" style="display:none"><label>End date</label><input type="date" id="f-recur-end-date" onchange="this.blur()"></div>
+        <div class="form-row" id="recur-end-count-row" style="display:none"><label>Occurrences</label><input type="number" id="f-recur-end-count" min="1" value="12" style="width:100%"></div>
+      </div>
+    </div>
+      <div class="form-row"><label>Depends on task</label><select id="f-dep"><option value="">None</option></select></div>
+    </div>
+    <div class="form-row">
+      <label>Subtasks</label>
+      <div id="subtask-list"></div>
+      <div style="display:flex;gap:7px;margin-top:6px">
+        <input type="text" id="sub-input" placeholder="Add a subtask..." style="flex:1">
+        <button class="btn" onclick="addSubtask()">Add</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Email reminders</label>
+      <div id="rem-list">
+        <div class="rem-row">
+          <select class="rt"><option>Email</option><option>Outlook Invite</option></select>
+          <select class="rtime"><option value="14">2 weeks before</option><option value="7">1 week before</option><option value="3">3 days before</option><option value="1">1 day before</option><option value="0">On due date</option></select>
+          <select class="rwho"><option>Assignee</option><option>Team Lead</option><option>Team</option></select>
+          <button class="btn" style="padding:3px 8px;font-size:11px;flex-shrink:0" onclick="this.closest('.rem-row').remove()">✕</button>
+        </div>
+        <div class="rem-row">
+          <select class="rt"><option>Email</option><option>Outlook Invite</option></select>
+          <select class="rtime"><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="3">3 days before</option><option value="1">1 day before</option><option value="0">On due date</option></select>
+          <select class="rwho"><option>Assignee</option><option>Team Lead</option><option>Team</option></select>
+          <button class="btn" style="padding:3px 8px;font-size:11px;flex-shrink:0" onclick="this.closest('.rem-row').remove()">✕</button>
+        </div>
+      </div>
+      <button class="btn" style="margin-top:6px;font-size:12px" onclick="addReminder()">+ Add reminder</button>
+    </div>
+    <div class="form-row"><label>On completion — notify</label>
+      <select id="f-notify"><option value="None">None</option><option>Team</option><option>Assignee</option><option>Team Lead</option><option>Assignee + Team Lead</option></select>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Add notes, links, context..."></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" id="save-btn" onclick="saveTask()">Save task</button>
+  </div>
+</div>
+</div>
+
+<!-- SYNC MODAL -->
+<div id="sync-modal" style="display:none" class="modal-bg">
+<div class="sync-modal">
+  <div class="modal-hdr"><h2>Outlook calendar sync</h2><button class="modal-x" onclick="closeSyncModal()">✕</button></div>
+  <div class="modal-body" id="sync-body" style="padding:16px 20px"></div>
+  <div class="modal-footer"><button class="btn btn-primary" onclick="closeSyncModal()">Done</button></div>
+</div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-hdr">
+    <button class="btn" onclick="closeDetail()" style="padding:4px 9px;font-size:12px">← Back</button>
+    <div style="flex:1"></div>
+    <button class="btn" onclick="editFromDetail()" style="font-size:12px">Edit</button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let tasks=[], subtasks=[], reminders=[];
+let nav='all', view='list', editingId=null, tempSubs=[], calM=new Date().getMonth(), calY=new Date().getFullYear();
+let dragId=null, msalInstance=null, accessToken=null, currentUser=null;
+const syncState={Accounting:false,'A/R':false,'A/P':false,'H/R':false,Auto:false};
+const today=new Date(); today.setHours(0,0,0,0);
+
+// ── MSAL Auth ──────────────────────────────────────────────
+async function initAuth(){
+  if(!CONFIG.clientId||CONFIG.clientId==='YOUR_CLIENT_ID_HERE'){
+    showDemoMode();
+    return;
+  }
+  try{
+    msalInstance=new msal.PublicClientApplication({
+      auth:{clientId:CONFIG.clientId,authority:`https://login.microsoftonline.com/${CONFIG.tenantId}`,redirectUri:"https://emoyer88.github.io/TaskFlow/"},
+      cache:{cacheLocation:'sessionStorage'}
+    });
+    await msalInstance.initialize();
+    const resp=await msalInstance.handleRedirectPromise();
+    let account=resp?.account||msalInstance.getAllAccounts()[0];
+    if(!account){
+      await msalInstance.loginRedirect({scopes:['Sites.ReadWrite.All','Calendars.ReadWrite','User.ReadBasic.All']});
+      return;
+    }
+    const tokenResp=await msalInstance.acquireTokenSilent({scopes:['https://graph.microsoft.com/Sites.ReadWrite.All','https://graph.microsoft.com/User.ReadBasic.All'],account});
+    accessToken=tokenResp.accessToken;
+    currentUser=account.name||account.username;
+    // Also fetch full profile for display name
+    try{
+      const profile=await graphGet('/me?=displayName,mail');
+      currentUser=profile.displayName||currentUser;
+    }catch(e){}
+    await loadData();
+  }catch(e){
+    showError('Authentication failed: '+e.message+'\n\nMake sure your Client ID is set in the CONFIG block at the top of this file.');
+  }
+}
+
+function showDemoMode(){
+  // Run with sample data when no Client ID is configured yet
+  tasks=[
+    {id:1,Title:'Q1 Financial Close',AssignedTo:'Sarah Chen',Team:'Accounting',DueDate:dOff(3),Priority:'High',Recurring:'Quarterly',DependsOnTaskID:null,Notes:'Coordinate with Marcus on payroll accruals.',IsCompleted:false,CompletedAt:null,CompletionNotify:'Assignee + Team Lead',_subtasks:[{id:101,Title:'Reconcile bank statements',ParentTaskID:1,IsCompleted:false},{id:102,Title:'Review AP/AR aging',ParentTaskID:1,IsCompleted:true},{id:103,Title:'Post journal entries',ParentTaskID:1,IsCompleted:false}],_reminders:[{id:201,ParentTaskID:1,ReminderType:'Email',DaysBeforeDue:14,NotifyWho:'Assignee'},{id:202,ParentTaskID:1,ReminderType:'Outlook Invite',DaysBeforeDue:7,NotifyWho:'Team Lead'}]},
+    {id:2,Title:'Payroll Reconciliation',AssignedTo:'Marcus Johnson',Team:'Accounting',DueDate:dOff(-2),Priority:'High',Recurring:'Monthly',DependsOnTaskID:null,Notes:'',IsCompleted:false,CompletedAt:null,CompletionNotify:'Team Lead',_subtasks:[{id:104,Title:'Export payroll data',ParentTaskID:2,IsCompleted:true},{id:105,Title:'Cross-reference with GL',ParentTaskID:2,IsCompleted:false}],_reminders:[{id:203,ParentTaskID:2,ReminderType:'Email',DaysBeforeDue:3,NotifyWho:'Assignee'}]},
+    {id:3,Title:'Vendor Invoice Review',AssignedTo:'Priya Patel',Team:'A/P',DueDate:dOff(7),Priority:'Medium',Recurring:'Weekly',DependsOnTaskID:1,Notes:'Focus on invoices over $10k first.',IsCompleted:false,CompletedAt:null,CompletionNotify:'Assignee',_subtasks:[{id:106,Title:'Download invoice batch',ParentTaskID:3,IsCompleted:false}],_reminders:[{id:204,ParentTaskID:3,ReminderType:'Email',DaysBeforeDue:7,NotifyWho:'Assignee'}]},
+    {id:4,Title:'Monthly Budget Variance',AssignedTo:'Sarah Chen',Team:'Accounting',DueDate:dOff(14),Priority:'Medium',Recurring:'Monthly',DependsOnTaskID:null,Notes:'',IsCompleted:false,CompletedAt:null,CompletionNotify:'Team',_subtasks:[],_reminders:[{id:205,ParentTaskID:4,ReminderType:'Email',DaysBeforeDue:7,NotifyWho:'Assignee'}]},
+    {id:5,Title:'AR Aging Report',AssignedTo:'Lisa Park',Team:'A/R',DueDate:dOff(5),Priority:'High',Recurring:'Monthly',DependsOnTaskID:null,Notes:'Send to CFO by noon.',IsCompleted:false,CompletedAt:null,CompletionNotify:'Team Lead',_subtasks:[],_reminders:[{id:206,ParentTaskID:5,ReminderType:'Email',DaysBeforeDue:1,NotifyWho:'Assignee'}]},
+    {id:6,Title:'Tax Filing Extension',AssignedTo:'Tom Williams',Team:'Accounting',DueDate:dOff(-10),Priority:'High',Recurring:'Annually',DependsOnTaskID:null,Notes:'Extension confirmed via IRS portal.',IsCompleted:true,CompletedAt:new Date(today.getTime()-86400000*2).toISOString(),CompletionNotify:'Team Lead',_subtasks:[{id:107,Title:'Verify extension filed',ParentTaskID:6,IsCompleted:true}],_reminders:[{id:207,ParentTaskID:6,ReminderType:'Email',DaysBeforeDue:14,NotifyWho:'Assignee'}]},
+  ];
+  document.getElementById('topbar-title').textContent='All Tasks';
+  showToast('Demo mode — add your Client ID to connect to SharePoint');
+  render();
+}
+
+function dOff(n){let d=new Date(today);d.setDate(d.getDate()+n);return d.toISOString().split('T')[0]}
+
+// ── SharePoint Graph API ───────────────────────────────────
+async function graphGet(url){
+  const headers={Authorization:'Bearer '+accessToken};
+  if(url.includes('')) headers['ConsistencyLevel']='eventual';
+  const r=await fetch('https://graph.microsoft.com/v1.0'+url,{headers});
+  if(!r.ok) throw new Error(`Graph API error ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+async function graphPost(url,body){
+  const r=await fetch('https://graph.microsoft.com/v1.0'+url,{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(`Graph API error ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+async function graphPatch(url,body){
+  const r=await fetch('https://graph.microsoft.com/v1.0'+url,{method:'PATCH',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(`Graph API error ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+async function graphDelete(url){
+  const r=await fetch('https://graph.microsoft.com/v1.0'+url,{method:'DELETE',headers:{Authorization:'Bearer '+accessToken}});
+  if(!r.ok) throw new Error(`Graph API error ${r.status}`);
+}
+
+async function getSiteId(){
+  if(CONFIG._siteId) return CONFIG._siteId;
+  const hostname='admoyer.sharepoint.com';
+  const path='/sites/Accounting';
+  const data=await graphGet(`/sites/${hostname}:${path}`);
+  CONFIG._siteId=data.id;
+  return data.id;
+}
+
+async function getListId(listName){
+  if(CONFIG._listIds?.[listName]) return CONFIG._listIds[listName];
+  const siteId=await getSiteId();
+  const data=await graphGet(`/sites/${siteId}/lists?$filter=displayName eq '${listName}'`);
+  const id=data.value[0]?.id;
+  if(!id) throw new Error(`List "${listName}" not found`);
+  CONFIG._listIds=CONFIG._listIds||{};
+  CONFIG._listIds[listName]=id;
+  return id;
+}
+
+async function loadData(){
+  if(!accessToken){showDemoMode();return}
+  setLoading(true);
+  try{
+    const siteId=await getSiteId();
+    const [tListId,sListId,rListId]=await Promise.all([
+      getListId(CONFIG.lists.tasks),
+      getListId(CONFIG.lists.subtasks),
+      getListId(CONFIG.lists.reminders)
+    ]);
+
+    const [tData,sData,rData]=await Promise.all([
+      graphGet(`/sites/${siteId}/lists/${tListId}/items?$expand=fields&$top=500`),
+      graphGet(`/sites/${siteId}/lists/${sListId}/items?$expand=fields&$top=500`),
+      graphGet(`/sites/${siteId}/lists/${rListId}/items?$expand=fields&$top=500`)
+    ]);
+
+    subtasks=sData.value.map(i=>({id:i.id,...i.fields}));
+    reminders=rData.value.map(i=>({id:i.id,...i.fields}));
+    tasks=tData.value.map(i=>{
+      const f={id:i.id,...i.fields};
+      f._subtasks=subtasks.filter(s=>String(s.ParentTaskID)===String(i.fields.id||i.id));
+      f._reminders=reminders.filter(r=>String(r.ParentTaskID)===String(i.fields.id||i.id));
+      f.IsCompleted=f.IsCompleted===true||f.IsCompleted==='Yes';
+      f.IsFutureRecurring=f.IsFutureRecurring===true||f.IsFutureRecurring==='Yes'||f.IsFutureRecurring==='true';
+      return f;
+    });
+    render();
+    // Daily check - runs in background, doesn't block UI
+    const lastCheck = sessionStorage.getItem('lastRecurCheck');
+    const todayStr = today.toISOString().split('T')[0];
+    if(lastCheck !== todayStr){
+      sessionStorage.setItem('lastRecurCheck', todayStr);
+      checkAndExtendRecurring().catch(e=>console.warn('Recurring check failed:',e));
+    }
+  }catch(e){
+    showError('Failed to load data from SharePoint: '+e.message);
+  }finally{
+    setLoading(false);
+  }
+}
+
+async function saveTaskToSP(fields, editId){
+  const siteId=await getSiteId();
+  const listId=await getListId(CONFIG.lists.tasks);
+  const body={fields:{
+    Title:fields.title,
+    AssignedTo:fields.assign,
+    Team:fields.team,
+    DueDate:fields.due||null,
+    Priority:fields.priority,
+    Recurring:fields.recur||null,
+    DependsOnTaskID:fields.dep||null,
+    Notes:fields.notes,
+    IsCompleted:fields.done?true:false,
+    CompletedAt:fields.completedAt||null,
+    CompletionNotify:fields.notify||null,
+    IsFutureRecurring:fields.isFuture?true:false,
+    RecurEndType:fields.recurEndType||null,
+    RecurEndDate:fields.recurEndDate||null,
+    RecurEndCount:fields.recurEndCount?parseInt(fields.recurEndCount):null,
+    RecurParentId:fields.recurParentId?parseInt(fields.recurParentId):null,
+    RecurOccurrence:fields.recurOccurrence?parseInt(fields.recurOccurrence):null
+  }};
+  if(editId){
+    await graphPatch(`/sites/${siteId}/lists/${listId}/items/${editId}`,body);
+    return editId;
+  } else {
+    const res=await graphPost(`/sites/${siteId}/lists/${listId}/items`,body);
+    return res.id;
+  }
+}
+
+async function saveSubtasksToSP(taskId, subs){
+  const siteId=await getSiteId();
+  const listId=await getListId(CONFIG.lists.subtasks);
+  // Delete old subtasks for this task
+  const old=subtasks.filter(s=>String(s.ParentTaskID)===String(taskId));
+  await Promise.all(old.map(s=>graphDelete(`/sites/${siteId}/lists/${listId}/items/${s.id}`)));
+  // Create new
+  await Promise.all(subs.map(s=>graphPost(`/sites/${siteId}/lists/${listId}/items`,{fields:{Title:s.t,ParentTaskID:taskId,IsCompleted:s.done?true:false}})));
+}
+
+async function saveRemindersToSP(taskId, rems){
+  const siteId=await getSiteId();
+  const listId=await getListId(CONFIG.lists.reminders);
+  const old=reminders.filter(r=>String(r.ParentTaskID)===String(taskId));
+  await Promise.all(old.map(r=>graphDelete(`/sites/${siteId}/lists/${listId}/items/${r.id}`)));
+  await Promise.all(rems.map(r=>graphPost(`/sites/${siteId}/lists/${listId}/items`,{fields:{ParentTaskID:taskId,ReminderType:r.type,DaysBeforeDue:r.time,NotifyWho:r.who}})));
+}
+
+async function deleteTaskFromSP(taskId){
+  const siteId=await getSiteId();
+  const [tId,sId,rId]=await Promise.all([getListId(CONFIG.lists.tasks),getListId(CONFIG.lists.subtasks),getListId(CONFIG.lists.reminders)]);
+  const oldSubs=subtasks.filter(s=>String(s.ParentTaskID)===String(taskId));
+  const oldRems=reminders.filter(r=>String(r.ParentTaskID)===String(taskId));
+  await Promise.all([
+    graphDelete(`/sites/${siteId}/lists/${tId}/items/${taskId}`),
+    ...oldSubs.map(s=>graphDelete(`/sites/${siteId}/lists/${sId}/items/${s.id}`)),
+    ...oldRems.map(r=>graphDelete(`/sites/${siteId}/lists/${rId}/items/${r.id}`))
+  ]);
+}
+
+// ── Render ─────────────────────────────────────────────────
+function render(){
+  updateBadges();
+  if(view==='calendar') renderCalendar(); else renderList();
+}
+
+function updateBadges(){
+  const now=new Date();now.setHours(0,0,0,0);
+  document.getElementById('b-all').textContent=tasks.filter(t=>!t.IsCompleted).length;
+  document.getElementById('b-mine').textContent=tasks.filter(t=>!t.IsCompleted&&t.AssignedTo===currentUser).length;
+  document.getElementById('b-overdue').textContent=tasks.filter(t=>!t.IsCompleted&&t.DueDate&&new Date(t.DueDate)<now).length;
+  document.getElementById('b-done').textContent=tasks.filter(t=>t.IsCompleted).length;
+  const anyOn=Object.values(syncState).some(v=>v);
+  document.getElementById('sync-dot').className='sync-dot'+(anyOn?' on':'');
+  document.getElementById('sync-lbl').textContent=anyOn?'Outlook: syncing':'Outlook: off';
+}
+
+function getFiltered(){
+  const now=new Date();now.setHours(0,0,0,0);
+  let ft=tasks;
+  if(nav==='mine') ft=ft.filter(t=>t.AssignedTo===currentUser);
+  if(nav==='overdue') ft=ft.filter(t=>!t.IsCompleted&&t.DueDate&&new Date(t.DueDate)<now);
+  if(nav==='completed') ft=ft.filter(t=>t.IsCompleted);
+  if(['Accounting','A/R','A/P','H/R','Auto'].includes(nav)) ft=ft.filter(t=>t.Team===nav);
+  return ft;
+}
+
+let sectionState={active:true,future:false,completed:false};
+
+function toggleSection(key){
+  sectionState[key]=!sectionState[key];
+  render();
+}
+
+function renderList(){
+  const c=document.getElementById('main-content');
+  const q=(document.getElementById('qs')?.value||'').toLowerCase();
+  const pf=document.getElementById('qp')?.value||'';
+  const af=document.getElementById('qa')?.value||'';
+  const now=new Date();now.setHours(0,0,0,0);
+
+  let vis=getFiltered().filter(t=>{
+    if(q&&!t.Title?.toLowerCase().includes(q)&&!t.AssignedTo?.toLowerCase().includes(q)) return false;
+    if(pf&&t.Priority!==pf) return false;
+    if(af&&t.AssignedTo!==af) return false;
+    return true;
+  });
+
+  const active=vis.filter(t=>!t.IsCompleted&&!t.IsFutureRecurring).sort((a,b)=>new Date(a.DueDate||'9999')-new Date(b.DueDate||'9999'));
+  const future=vis.filter(t=>!t.IsCompleted&&t.IsFutureRecurring).sort((a,b)=>new Date(a.DueDate||'9999')-new Date(b.DueDate||'9999'));
+  const done=vis.filter(t=>t.IsCompleted);
+  const assignees=[...new Set(tasks.map(t=>t.AssignedTo).filter(Boolean))].sort();
+
+  let html='<div class="filter-bar">'
+    +'<input class="search" id="qs" placeholder="Search tasks..." value="'+q+'" oninput="render()">'
+    +'<select class="fsel" id="qp" onchange="render()">'
+    +'<option value="">All priorities</option>'
+    +'<option value="High"'+(pf==='High'?' selected':'')+'>High</option>'
+    +'<option value="Medium"'+(pf==='Medium'?' selected':'')+'>Medium</option>'
+    +'<option value="Low"'+(pf==='Low'?' selected':'')+'>Low</option>'
+    +'</select>'
+    +'<select class="fsel" id="qa" onchange="render()">'
+    +'<option value="">All assignees</option>'
+    +assignees.map(p=>'<option value="'+p+'"'+(af===p?' selected':'')+'>'+p+'</option>').join('')
+    +'</select></div>'
+    +'<div class="drag-hint">'
+    +'<span><span class="dhdot" style="background:#EAF3DE;border:1px solid #639922"></span><span style="color:#3B6D11">Drop left = subtask</span></span>'
+    +'<span><span class="dhdot" style="background:#EEEDFE;border:1px solid #534AB7"></span><span style="color:#534AB7">Drop right = dependency</span></span>'
+    +'</div>';
+
+  if(!active.length&&!future.length&&!done.length){
+    html+='<div class="state-box"><p>No tasks here</p></div>';
+    c.innerHTML=html;return;
+  }
+
+  // Active section - open by default
+  html+='<div class="section-hdr" onclick="toggleSection(\'active\')">'
+    +'<span class="section-lbl">Active — '+active.length+'</span>'
+    +'<span class="section-toggle'+(sectionState.active?'':' collapsed')+'">&#9662;</span>'
+    +'</div>'
+    +'<div class="section-body" style="display:'+(sectionState.active?'block':'none')+'">'
+    +(active.length?active.map(t=>cardHTML(t,now)).join(''):'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">No active tasks</div>')
+    +'</div>';
+
+  // Future recurring section - collapsed by default
+  if(future.length){
+  html+='<div class="section-hdr" style="margin-top:16px" onclick="toggleSection(\'future\')">'
+      +'<span class="section-lbl">Future Recurring — '+future.length+'</span>'
+      +'<span class="section-toggle'+(sectionState.future?'':' collapsed')+'">&#9662;</span>'
+      +'</div>'
+      +'<div class="section-body" style="display:'+(sectionState.future?'block':'none')+'">'
+      +future.map(t=>cardHTML(t,now)).join('')
+      +'</div>';
+  }
+
+  // Completed section - collapsed by default
+  html+='<div class="section-hdr" style="margin-top:16px" onclick="toggleSection(\'completed\')">'
+    +'<span class="section-lbl">Completed — '+done.length+'</span>'
+    +'<span class="section-toggle'+(sectionState.completed?'':' collapsed')+'">&#9662;</span>'
+    +'</div>'
+    +'<div class="section-body" style="display:'+(sectionState.completed?'block':'none')+'">'
+    +(done.length?done.map(t=>cardHTML(t,now)).join(''):'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">No completed tasks yet</div>')
+    +'</div>';
+
+  c.innerHTML=html;
+  bindDrag();
+}
+
+function cardHTML(t,now){
+  const due=t.DueDate?new Date(t.DueDate):null;
+  const overdue=due&&due<now&&!t.IsCompleted;
+  const subs=t._subtasks||[];
+  const sd=subs.filter(s=>s.IsCompleted===true||s.IsCompleted==='Yes').length,st=subs.length,pct=st?Math.round(sd/st*100):0;
+  const dl=due?due.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  const dep=t.DependsOnTaskID?tasks.find(x=>String(x.id)===String(t.DependsOnTaskID)):null;
+  const prioClass={High:'chip-high',Medium:'chip-med',Low:'chip-low'}[t.Priority]||'chip-med';
+  return `<div class="task-card${t.IsCompleted?' completed':''}" id="tc-${t.id}" data-id="${t.id}" draggable="true" onclick="openDetail('${t.id}')">
+    <div class="task-header">
+      <div class="drag-handle" title="Drag to set subtask or dependency">⠿</div>
+      <div class="task-check${t.IsCompleted?' done':''}" onclick="toggleDone(event,'${t.id}')"></div>
+      <div class="task-title${t.IsCompleted?' done':''}">${t.Title||''}</div>
+    </div>
+    <div class="task-meta">
+      ${t.AssignedTo?`<span class="chip chip-assign">${t.AssignedTo}</span>`:''}
+      ${dl?`<span class="chip chip-date${overdue?' overdue':''}">${overdue?'⚑ ':''}${dl}</span>`:''}
+      <span class="chip ${prioClass}">${t.Priority||'Medium'}</span>
+      ${t.Recurring?`<span class="chip chip-recur">↻ ${t.Recurring}</span>`:''}
+      ${dep?`<span class="chip chip-dep">↳ ${dep.Title}</span>`:''}
+      ${t.IsCompleted&&t.CompletedAt?`<span class="chip chip-assign">✓ ${new Date(t.CompletedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`:''}
+    </div>
+    ${st?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="sub-count">${sd}/${st} subtasks</div>`:''}
+  </div>`;
+}
+
+// ── Drag & Drop ────────────────────────────────────────────
+function bindDrag(){
+  document.querySelectorAll('.task-card[draggable]').forEach(el=>{
+    el.addEventListener('dragstart',e=>{dragId=el.dataset.id;el.classList.add('dragging');e.dataTransfer.effectAllowed='move'});
+    el.addEventListener('dragend',()=>{el.classList.remove('dragging');document.querySelectorAll('.task-card').forEach(c=>c.classList.remove('drop-left','drop-right'));dragId=null});
+    el.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(dragId===el.dataset.id) return;
+      const mid=el.getBoundingClientRect().left+el.getBoundingClientRect().width/2;
+      document.querySelectorAll('.task-card').forEach(c=>c.classList.remove('drop-left','drop-right'));
+      el.classList.add(e.clientX<mid?'drop-left':'drop-right');
+    });
+    el.addEventListener('dragleave',()=>el.classList.remove('drop-left','drop-right'));
+    el.addEventListener('drop',async e=>{
+      e.preventDefault();e.stopPropagation();
+      if(!dragId||dragId===el.dataset.id) return;
+      const targetId=el.dataset.id;
+      const isLeft=el.classList.contains('drop-left');
+      el.classList.remove('drop-left','drop-right');
+      const dragged=tasks.find(t=>String(t.id)===String(dragId));
+      const target=tasks.find(t=>String(t.id)===String(targetId));
+      if(!dragged||!target) return;
+      if(isLeft){
+        if(!target._subtasks) target._subtasks=[];
+        if(!target._subtasks.find(s=>s.Title===dragged.Title)){
+          target._subtasks.push({id:'new_'+Date.now(),Title:dragged.Title,ParentTaskID:targetId,IsCompleted:dragged.IsCompleted});
+          if(accessToken){
+            try{await saveSubtasksToSP(targetId,target._subtasks.map(s=>({t:s.Title,done:s.IsCompleted})))}
+            catch(e){showError('Failed to save subtask: '+e.message)}
+          }
+        }
+        showToast(`"${dragged.Title}" added as subtask of "${target.Title}"`);
+      } else {
+        dragged.DependsOnTaskID=targetId;
+        if(accessToken){
+          try{
+            const siteId=await getSiteId();
+            const listId=await getListId(CONFIG.lists.tasks);
+            await graphPatch(`/sites/${siteId}/lists/${listId}/items/${dragged.id}`,{fields:{DependsOnTaskID:parseInt(targetId)||null}});
+          }catch(e){showError('Failed to save dependency: '+e.message)}
+        }
+        showToast(`"${dragged.Title}" now depends on "${target.Title}"`);
+      }
+      render();
+    });
+  });
+}
+
+// ── Calendar ───────────────────────────────────────────────
+function renderCalendar(){
+  const c=document.getElementById('main-content');
+  const first=new Date(calY,calM,1),last=new Date(calY,calM+1,0);
+  const mName=first.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let cells=[];
+  for(let i=0;i<first.getDay();i++) cells.push({date:new Date(calY,calM,1-first.getDay()+i),cur:false});
+  for(let d=1;d<=last.getDate();d++) cells.push({date:new Date(calY,calM,d),cur:true});
+  const rem=(7-(cells.length%7))%7;
+  for(let i=1;i<=rem;i++) cells.push({date:new Date(calY,calM+1,i),cur:false});
+
+  let rows='';
+  for(let r=0;r<cells.length/7;r++){
+    rows+='<tr>';
+    cells.slice(r*7,(r+1)*7).forEach(({date,cur})=>{
+      const iso=date.toISOString().split('T')[0];
+      const isToday=date.getTime()===today.getTime();
+      const dayTasks=tasks.filter(t=>t.DueDate&&t.DueDate.startsWith(iso));
+      const chips=dayTasks.map(t=>`<div class="cal-chip${t.Priority==='High'?' high':t.IsCompleted?' done':''}" onclick="openDetail('${t.id}');event.stopPropagation()" title="${t.Title}">${t.Title}</div>`).join('');
+      rows+=`<td class="cal-td${!cur?' other':''}${isToday?' today':''}"><div class="cal-date">${date.getDate()}</div>${chips}</td>`;
+    });
+    rows+='</tr>';
+  }
+
+  c.innerHTML=`<div class="cal-nav">
+    <button class="btn" onclick="calPrev()">‹ Prev</button>
+    <h3>${mName}</h3>
+    <button class="btn" onclick="calNext()">Next ›</button>
+  </div>
+  <div class="cal-wrap"><table class="cal-table">
+    <thead><tr>${days.map(d=>`<th class="cal-th">${d}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">
+    <span style="font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:var(--c1l);border-radius:2px;display:inline-block"></span>Normal</span>
+    <span style="font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#FCEBEB;border-radius:2px;display:inline-block"></span>High priority</span>
+    <span style="font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#f0f4f8;border-radius:2px;display:inline-block"></span>Completed</span>
+  </div>`;
+}
+function calPrev(){calM--;if(calM<0){calM=11;calY--}render()}
+function calNext(){calM++;if(calM>11){calM=0;calY++}render()}
+
+// ── Nav / View ─────────────────────────────────────────────
+function setNav(el,n,title){
+  nav=n;
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('topbar-title').textContent=title;
+  closeDetail();
+  render();
+}
+function setView(v,tabEl){
+  view=v;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if(tabEl) tabEl.classList.add('active');
+  render();
+}
+
+// ── Toggle Done ────────────────────────────────────────────
+async function toggleDone(e,id){
+  e.stopPropagation();
+  const t=tasks.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  t.IsCompleted=!t.IsCompleted;
+  t.CompletedAt=t.IsCompleted?new Date().toISOString():null;
+  if(t.IsCompleted && t.Recurring){
+    await activateNextRecurring(t);
+    await loadData();
+  }
+  render();
+  if(document.getElementById('detail-panel').classList.contains('open')) openDetail(id);
+  if(accessToken){
+    try{
+      const siteId=await getSiteId();
+      const listId=await getListId(CONFIG.lists.tasks);
+      await graphPatch(`/sites/${siteId}/lists/${listId}/items/${id}`,{fields:{IsCompleted:t.IsCompleted?true:false,CompletedAt:t.CompletedAt||null}});
+    }catch(err){showError('Failed to update task: '+err.message)}
+  }
+}
+
+// ── Modal ──────────────────────────────────────────────────
+function openModal(editId=null){
+  editingId=editId;tempSubs=[];
+  document.getElementById('modal-title').textContent=editId?'Edit Task':'New Task';
+  const depSel=document.getElementById('f-dep');
+  depSel.innerHTML='<option value="">None</option>';
+  tasks.filter(t=>String(t.id)!==String(editId)).forEach(t=>{
+    const o=document.createElement('option');o.value=t.id;o.textContent=t.Title;depSel.appendChild(o);
+  });
+  if(editId){
+    const t=tasks.find(x=>String(x.id)===String(editId));
+    document.getElementById('f-title').value=t.Title||'';
+    document.getElementById('f-assign').value=t.AssignedTo||'';
+    document.getElementById('f-team').value=t.Team||'';
+    document.getElementById('f-due').value=t.DueDate?t.DueDate.split('T')[0]:'';
+    document.getElementById('f-priority').value=t.Priority||'Medium';
+    document.getElementById('f-recur').value=t.Recurring||'';
+    if(t.Recurring){
+      document.getElementById('recur-end-row').style.display='block';
+      document.getElementById('f-recur-end').value=t.RecurEndType||'never';
+      document.getElementById('recur-end-date-row').style.display=t.RecurEndType==='date'?'block':'none';
+      document.getElementById('recur-end-count-row').style.display=t.RecurEndType==='count'?'block':'none';
+      if(t.RecurEndDate) document.getElementById('f-recur-end-date').value=t.RecurEndDate.split('T')[0];
+      if(t.RecurEndCount) document.getElementById('f-recur-end-count').value=t.RecurEndCount;
+    } else {
+      document.getElementById('recur-end-row').style.display='none';
+    }
+    document.getElementById('f-dep').value=t.DependsOnTaskID||'';
+    document.getElementById('f-notes').value=t.Notes||'';
+    document.getElementById('f-notify').value=t.CompletionNotify||'None';
+    tempSubs=(t._subtasks||[]).map(s=>({t:s.Title,done:s.IsCompleted===true||s.IsCompleted==='Yes'}));
+  } else {
+    ['f-title','f-due','f-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f-assign').value=currentUser||'';
+    document.getElementById('f-team').value='Accounting';
+    document.getElementById('f-priority').value='Low';
+    document.getElementById('f-recur').value='';
+    document.getElementById('recur-end-row').style.display='none';
+    document.getElementById('recur-end-date-row').style.display='none';
+    document.getElementById('recur-end-count-row').style.display='none';
+    document.getElementById('recur-end-row').style.display='none';
+    document.getElementById('f-recur-end').value='never';
+    document.getElementById('recur-end-date-row').style.display='none';
+    document.getElementById('recur-end-count-row').style.display='none';
+    document.getElementById('f-dep').value='';
+    document.getElementById('f-notify').value='None';
+  }
+  renderSubList();
+  document.getElementById('task-modal').style.display='flex';
+}
+
+function renderSubList(){
+  document.getElementById('subtask-list').innerHTML=tempSubs.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:3px 0">
+      <input type="checkbox" ${s.done?'checked':''} onchange="tempSubs[${i}].done=this.checked" style="width:auto">
+      <span style="flex:1;font-size:13px">${s.t}</span>
+      <button class="btn" style="padding:2px 8px;font-size:11px" onclick="tempSubs.splice(${i},1);renderSubList()">✕</button>
+    </div>`).join('');
+}
+
+function addSubtask(){
+  const v=document.getElementById('sub-input').value.trim();
+  if(!v) return;
+  tempSubs.push({t:v,done:false});
+  document.getElementById('sub-input').value='';
+  renderSubList();
+}
+
+function addReminder(){
+  const list=document.getElementById('rem-list');
+  const row=document.createElement('div');row.className='rem-row';
+  row.innerHTML=`<select class="rt"><option>Email</option><option>Outlook Invite</option></select>
+    <select class="rtime"><option value="14">2 weeks before</option><option value="7">1 week before</option><option value="3">3 days before</option><option value="1">1 day before</option><option value="0">On due date</option></select>
+    <select class="rwho"><option>Assignee</option><option>Team Lead</option><option>Team</option></select>
+    <button class="btn" style="padding:3px 8px;font-size:11px;flex-shrink:0" onclick="this.closest('.rem-row').remove()">✕</button>`;
+  list.appendChild(row);
+}
+
+async function saveTask(){
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){alert('Please enter a task title');return}
+  const remRows=document.querySelectorAll('.rem-row');
+  const rems=[...remRows].map(r=>({type:r.querySelector('.rt').value,time:parseInt(r.querySelector('.rtime').value),who:r.querySelector('.rwho').value}));
+  const recurVal = document.getElementById('f-recur').value;
+  const recurEndType = recurVal ? document.getElementById('f-recur-end').value||'never' : 'never';
+  const recurEndDate = recurEndType==='date' ? (document.getElementById('f-recur-end-date').value||null) : null;
+  const recurEndCount = recurEndType==='count' ? parseInt(document.getElementById('f-recur-end-count').value||0)||null : null;
+  const fields={title,assign:document.getElementById('f-assign').value,team:document.getElementById('f-team').value,due:document.getElementById('f-due').value||null,priority:document.getElementById('f-priority').value,recur:recurVal||null,recurEndType,recurEndDate,recurEndCount,recurParentId:null,recurOccurrence:0,isFuture:false,dep:document.getElementById('f-dep').value||null,notes:document.getElementById('f-notes').value,notify:document.getElementById('f-notify').value,done:editingId?tasks.find(x=>String(x.id)===String(editingId))?.IsCompleted:false,completedAt:editingId?tasks.find(x=>String(x.id)===String(editingId))?.CompletedAt:null};
+
+  const btn=document.getElementById('save-btn');
+  btn.textContent='Saving...';btn.disabled=true;
+
+  try{
+    if(accessToken){
+      const savedId=await saveTaskToSP(fields,editingId);
+      await saveSubtasksToSP(savedId,tempSubs);
+      await saveRemindersToSP(savedId,rems);
+      await loadData();
+      // Generate future recurring instances if this is a new recurring task
+      if(!editingId && fields.recur && fields.due){
+        const savedTask={...fields,id:savedId,Title:fields.title,AssignedTo:fields.assign,
+          Team:fields.team,DueDate:fields.due,Priority:fields.priority,
+          Recurring:fields.recur,DependsOnTaskID:fields.dep,
+          Notes:fields.notes,CompletionNotify:fields.notify};
+        await generateRecurringInstances(savedTask, tempSubs, getReminderRows(), 
+          recurEndType, recurEndDate, recurEndCount);
+        await loadData();
+      }
+    } else {
+      // Demo mode — update in memory
+      const t={id:editingId||Date.now(),Title:fields.title,AssignedTo:fields.assign,Team:fields.team,DueDate:fields.due,Priority:fields.priority,Recurring:fields.recur,DependsOnTaskID:fields.dep,Notes:fields.notes,IsCompleted:fields.done||false,CompletedAt:fields.completedAt,CompletionNotify:fields.notify,_subtasks:tempSubs.map((s,i)=>({id:'tmp'+i,Title:s.t,IsCompleted:s.done,ParentTaskID:editingId||'new'})),_reminders:rems.map((r,i)=>({id:'tmpr'+i,ReminderType:r.type,DaysBeforeDue:r.time,NotifyWho:r.who}))};
+      if(editingId) tasks=tasks.map(x=>String(x.id)===String(editingId)?t:x); else tasks.push(t);
+    }
+    closeModal();render();
+    showToast(editingId?'Task updated':'Task created');
+  }catch(e){
+    showError('Failed to save: '+e.message);
+  }finally{
+    btn.textContent='Save task';btn.disabled=false;
+  }
+}
+
+function closeModal(){document.getElementById('task-modal').style.display='none';editingId=null}
+
+// ── Detail Panel ───────────────────────────────────────────
+function openDetail(id){
+  const t=tasks.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const due=t.DueDate?new Date(t.DueDate):null;
+  const overdue=due&&due<now&&!t.IsCompleted;
+  const dep=t.DependsOnTaskID?tasks.find(x=>String(x.id)===String(t.DependsOnTaskID)):null;
+  const subs=t._subtasks||[];
+  const rems=t._reminders||[];
+  const rl={0:'On due date',1:'1 day before',3:'3 days before',7:'1 week before',14:'2 weeks before'};
+  document.getElementById('detail-body').innerHTML=`
+    ${t.IsCompleted&&t.CompletedAt?`<div class="completion-banner">✓ Completed ${new Date(t.CompletedAt).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>`:''}
+    <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:14px">
+      <div class="task-check${t.IsCompleted?' done':''}" onclick="toggleDone(event,'${t.id}')"></div>
+      <h2 style="font-size:15px;font-weight:600;line-height:1.4;flex:1">${t.Title||''}</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:18px">
+      <div style="background:#f8fafc;border:1px solid var(--border);padding:8px 10px;border-radius:var(--radius)"><div style="font-size:10.5px;color:var(--text3);margin-bottom:2px">Assigned to</div><div style="font-size:13px">${t.AssignedTo||'Unassigned'}</div></div>
+      <div style="background:#f8fafc;border:1px solid var(--border);padding:8px 10px;border-radius:var(--radius)"><div style="font-size:10.5px;color:var(--text3);margin-bottom:2px">Due date</div><div style="font-size:13px;${overdue?'color:var(--danger)':''}">${due?due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'No date'}</div></div>
+      <div style="background:#f8fafc;border:1px solid var(--border);padding:8px 10px;border-radius:var(--radius)"><div style="font-size:10.5px;color:var(--text3);margin-bottom:2px">Priority</div><div style="font-size:13px">${t.Priority||'—'}</div></div>
+      <div style="background:#f8fafc;border:1px solid var(--border);padding:8px 10px;border-radius:var(--radius)"><div style="font-size:10.5px;color:var(--text3);margin-bottom:2px">Recurring</div><div style="font-size:13px">${t.Recurring||'None'}</div></div>
+      <div style="background:#f8fafc;border:1px solid var(--border);padding:8px 10px;border-radius:var(--radius)"><div style="font-size:10.5px;color:var(--text3);margin-bottom:2px">Team</div><div style="font-size:13px">${t.Team||'—'}</div></div>
+    </div>
+    ${subs.length?`<div class="detail-sec"><h4>Subtasks (${subs.filter(s=>s.IsCompleted===true||s.IsCompleted==='Yes').length}/${subs.length})</h4>${subs.map((s,i)=>`<div class="subtask-row"><div class="sub-check${(s.IsCompleted===true||s.IsCompleted==='Yes')?' done':''}" onclick="toggleSub('${t.id}',${i})"></div>${s.Title}</div>`).join('')}</div>`:''}
+    ${dep?`<div class="detail-sec"><h4>Depends on</h4><div class="dep-item"><span style="color:var(--text3);font-size:11px">↳</span>${dep.Title}<span class="chip chip-dep" style="margin-left:auto;font-size:10px">${dep.IsCompleted?'Done':'Pending'}</span></div></div>`:''}
+    ${rems.length?`<div class="detail-sec"><h4>Reminders</h4>${rems.map(r=>`<div class="dep-item"><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:var(--c1l);color:var(--c1);margin-right:6px">${r.ReminderType}</span>${rl[r.DaysBeforeDue]||r.DaysBeforeDue+'d before'} → ${r.NotifyWho}</div>`).join('')}</div>`:''}
+    <div class="detail-sec"><h4>On completion — notify</h4><div style="font-size:13px;color:var(--text2)">${t.CompletionNotify||'None'}</div></div>
+    ${t.Notes?`<div class="detail-sec"><h4>Notes</h4><div class="note-box">${t.Notes}</div></div>`:''}
+    <div style="display:flex;gap:7px;margin-top:8px">
+      <button class="btn" style="flex:1;justify-content:center;font-size:12.5px" onclick="editFromDetail()">Edit task</button>
+      <button class="btn" style="flex:1;justify-content:center;font-size:12.5px;color:var(--danger);border-color:var(--danger-border)" onclick="deleteTask('${t.id}')">Delete</button>
+    </div>`;
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-panel').dataset.tid=id;
+}
+
+function closeDetail(){document.getElementById('detail-panel').classList.remove('open')}
+function editFromDetail(){const id=document.getElementById('detail-panel').dataset.tid;closeDetail();openModal(id)}
+
+async function toggleSub(taskId,idx){
+  const t=tasks.find(x=>String(x.id)===String(taskId));
+  if(!t||!t._subtasks[idx]) return;
+  t._subtasks[idx].IsCompleted=!(t._subtasks[idx].IsCompleted===true||t._subtasks[idx].IsCompleted==='Yes');
+  if(accessToken){
+    try{await saveSubtasksToSP(taskId,t._subtasks.map(s=>({t:s.Title,done:s.IsCompleted})))}
+    catch(e){showError('Failed to update subtask: '+e.message)}
+  }
+  openDetail(taskId);render();
+}
+
+async function deleteTask(id){
+  if(!confirm('Delete this task and all its subtasks and reminders?')) return;
+  if(accessToken){
+    try{await deleteTaskFromSP(id)}
+    catch(e){showError('Failed to delete: '+e.message);return}
+  }
+  tasks=tasks.filter(t=>String(t.id)!==String(id));
+  closeDetail();render();
+  showToast('Task deleted');
+}
+
+// ── Sync Modal ─────────────────────────────────────────────
+const teamColors={Accounting:'#185FA5','A/R':'#0F6E56','A/P':'#854F0B','H/R':'#993556',Auto:'#534AB7'};
+function openSyncModal(){
+  document.getElementById('sync-body').innerHTML=`
+    <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px;line-height:1.6">When enabled, all tasks for that team automatically sync as calendar events to your shared Outlook calendar. No per-task action needed — requires Azure AD app registration.</p>
+    ${Object.keys(syncState).map(team=>`<div class="team-row">
+      <div style="width:10px;height:10px;border-radius:2px;background:${teamColors[team]};flex-shrink:0"></div>
+      <div style="flex:1"><div style="font-size:13.5px;font-weight:500">${team}</div>
+      <div style="font-size:11.5px;color:var(--text3)">${tasks.filter(t=>t.Team===team&&!t.IsCompleted).length} active tasks</div></div>
+      <span style="font-size:11.5px;color:var(--text3);margin-right:10px" id="sl-${team.replace('/','')}">${syncState[team]?'Syncing':'Off'}</span>
+      <button class="toggle ${syncState[team]?'on':''}" id="st-${team.replace('/','')}" onclick="toggleSync('${team}')"></button>
+    </div>`).join('')}
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:14px;font-size:12px;color:var(--text3);line-height:1.6">Changes to task dates and reminders update in Outlook automatically once sync is active.</div>`;
+  document.getElementById('sync-modal').style.display='flex';
+}
+
+function toggleSync(team){
+  syncState[team]=!syncState[team];
+  const key=team.replace('/','');
+  document.getElementById('st-'+key).className='toggle'+(syncState[team]?' on':'');
+  document.getElementById('sl-'+key).textContent=syncState[team]?'Syncing':'Off';
+  updateBadges();
+  showToast(syncState[team]?`${team} syncing to Outlook`:`${team} sync off`);
+}
+function closeSyncModal(){document.getElementById('sync-modal').style.display='none'}
+
+// ── Helpers ────────────────────────────────────────────────
+function setLoading(on){
+  if(on) document.getElementById('main-content').innerHTML='<div class="state-box"><div class="spinner"></div><p>Loading from SharePoint...</p></div>';
+}
+function showError(msg){
+  const c=document.getElementById('main-content');
+  const existing=c.querySelector('.error-box');
+  if(existing) existing.remove();
+  const div=document.createElement('div');
+  div.className='error-box';
+  div.textContent=msg;
+  c.prepend(div);
+}
+let toastT;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.opacity='1';
+  clearTimeout(toastT);toastT=setTimeout(()=>{el.style.opacity='0'},2800);
+}
+
+
+// ── Recurring Task Generation ───────────────────────────
+function getNextDueDate(dueDateStr, recur){
+  const d = new Date(dueDateStr);
+  switch(recur){
+    case 'Daily':     d.setDate(d.getDate()+1); break;
+    case 'Weekly':    d.setDate(d.getDate()+7); break;
+    case 'Biweekly':  d.setDate(d.getDate()+14); break;
+    case 'Monthly':   d.setMonth(d.getMonth()+1); break;
+    case 'Quarterly': d.setMonth(d.getMonth()+3); break;
+    case 'Annually':  d.setFullYear(d.getFullYear()+1); break;
+  }
+  return d.toISOString().split('T')[0];
+}
+
+function recurIntervalDays(recur){
+  const map={Daily:1,Weekly:7,Biweekly:14,Monthly:30,Quarterly:91,Annually:365};
+  return map[recur]||30;
+}
+
+async function generateRecurringInstances(parentTask, subs, rems, recurEndType, recurEndDate, recurEndCount){
+  if(!parentTask.Recurring||parentTask.Recurring==='') return;
+  const oneYearOut = new Date(today); oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+  const endDate = recurEndType==='date'&&recurEndDate ? new Date(recurEndDate) : oneYearOut;
+  const maxEnd = endDate < oneYearOut ? endDate : oneYearOut;
+  const maxCount = recurEndType==='count'&&recurEndCount ? parseInt(recurEndCount) : 999;
+
+  let currentDate = parentTask.DueDate;
+  let count = 0;
+  const instancesToCreate = [];
+
+  while(count < maxCount){
+    const nextDate = getNextDueDate(currentDate, parentTask.Recurring);
+    const nextDt = new Date(nextDate);
+    if(nextDt > maxEnd) break;
+    instancesToCreate.push(nextDate);
+    currentDate = nextDate;
+    count++;
+  }
+
+  for(let i=0; i<instancesToCreate.length; i++){
+    const instanceFields = {
+      title: parentTask.Title,
+      assign: parentTask.AssignedTo,
+      team: parentTask.Team,
+      due: instancesToCreate[i],
+      priority: parentTask.Priority,
+      recur: parentTask.Recurring,
+      dep: parentTask.DependsOnTaskID||null,
+      notes: parentTask.Notes||'',
+      notify: parentTask.CompletionNotify||'None',
+      done: false,
+      completedAt: null,
+      isFuture: true,
+      recurEndType: recurEndType||'never',
+      recurEndDate: recurEndDate||null,
+      recurEndCount: recurEndCount||null,
+      recurParentId: parentTask.id,
+      recurOccurrence: i+1
+    };
+    if(accessToken){
+      try{
+        const savedId = await saveTaskToSP(instanceFields, null);
+        if(subs&&subs.length) await saveSubtasksToSP(savedId, subs);
+        if(rems&&rems.length) await saveRemindersToSP(savedId, rems);
+      }catch(e){ console.error('Failed to create recurring instance:', e); }
+    }
+  }
+}
+
+async function activateNextRecurring(completedTask){
+  if(!completedTask.Recurring) return;
+  // Find next future recurring instance of this task chain
+  const parentId = completedTask.RecurParentId || completedTask.id;
+  const futureInstances = tasks.filter(t=>
+    (String(t.RecurParentId)===String(parentId) || String(t.id)===String(parentId))
+    && t.IsFutureRecurring && !t.IsCompleted
+  ).sort((a,b)=>new Date(a.DueDate)-new Date(b.DueDate));
+
+  if(futureInstances.length>0){
+    const next = futureInstances[0];
+    next.IsFutureRecurring = false;
+    if(accessToken){
+      try{
+        const siteId = await getSiteId();
+        const listId = await getListId(CONFIG.lists.tasks);
+        await graphPatch('/sites/'+siteId+'/lists/'+listId+'/items/'+next.id, {fields:{IsFutureRecurring:false}});
+      }catch(e){ console.error('Failed to activate next recurring:', e); }
+    }
+    showToast('Next recurring instance is now active: '+next.Title+' due '+next.DueDate);
+  }
+
+  // Check if we need to generate more (rolling 1-year window)
+  const allInstances = tasks.filter(t=>
+    String(t.RecurParentId)===String(parentId) || String(t.id)===String(parentId)
+  );
+  const lastInstance = allInstances.filter(t=>!t.IsCompleted).sort((a,b)=>new Date(b.DueDate)-new Date(a.DueDate))[0];
+  if(lastInstance){
+    const lastDate = new Date(lastInstance.DueDate);
+    const oneYearOut = new Date(today); oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+    if(lastDate < oneYearOut){
+      // Generate one more instance to keep the rolling window
+      const newDate = getNextDueDate(lastInstance.DueDate, completedTask.Recurring);
+      const endDate = completedTask.RecurEndDate ? new Date(completedTask.RecurEndDate) : oneYearOut;
+      if(new Date(newDate) <= endDate){
+        const instanceFields = {
+          title:completedTask.Title, assign:completedTask.AssignedTo, team:completedTask.Team,
+          due:newDate, priority:completedTask.Priority, recur:completedTask.Recurring,
+          dep:completedTask.DependsOnTaskID||null, notes:completedTask.Notes||'',
+          notify:completedTask.CompletionNotify||'None', done:false, completedAt:null,
+          isFuture:true, recurEndType:completedTask.RecurEndType||'never',
+          recurEndDate:completedTask.RecurEndDate||null, recurEndCount:null,
+          recurParentId:parentId, recurOccurrence:(lastInstance.RecurOccurrence||0)+1
+        };
+        if(accessToken){
+          try{
+            const savedId = await saveTaskToSP(instanceFields, null);
+            const subs = (completedTask._subtasks||[]).map(s=>({t:s.Title,done:false}));
+            const rems = (completedTask._reminders||[]).map(r=>({type:r.ReminderType,time:r.DaysBeforeDue,who:r.NotifyWho}));
+            if(subs.length) await saveSubtasksToSP(savedId, subs);
+            if(rems.length) await saveRemindersToSP(savedId, rems);
+          }catch(e){ console.error('Failed to extend recurring chain:', e); }
+        }
+      }
+    }
+  }
+}
+
+async function checkAndExtendRecurring(){
+  // Called on app load - ensures all recurring chains have instances up to 1 year out
+  if(!accessToken) return;
+  const oneYearOut = new Date(today); oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+  const recurringTasks = tasks.filter(t=>t.Recurring&&!t.IsFutureRecurring&&!t.IsCompleted);
+  for(const t of recurringTasks){
+    const parentId = t.RecurParentId||t.id;
+    const allInChain = tasks.filter(x=>x.RecurParentId===parentId||String(x.id)===String(parentId));
+    const lastFuture = allInChain.filter(x=>x.IsFutureRecurring).sort((a,b)=>new Date(b.DueDate)-new Date(a.DueDate))[0];
+    const checkDate = lastFuture ? new Date(lastFuture.DueDate) : new Date(t.DueDate||today);
+    if(checkDate < oneYearOut){
+      await activateNextRecurring(t);
+    }
+  }
+}
+function getReminderRows(){
+  const remRows=document.querySelectorAll('.rem-row');
+  return [...remRows].map(r=>({type:r.querySelector('.rt').value,time:parseInt(r.querySelector('.rtime').value),who:r.querySelector('.rwho').value}));
+}
+
+function toggleRecurEnd(){
+  const val=document.getElementById('f-recur').value;
+  document.getElementById('recur-end-row').style.display=val?'block':'none';
+  if(!val){ document.getElementById('f-recur-end-date').style.display='none'; document.getElementById('f-recur-end-count').style.display='none'; }
+}
+function toggleRecurEndDate(){
+  const type=document.getElementById('f-recur-end').value;
+  document.getElementById('recur-end-date-row').style.display=type==='date'?'block':'none';
+  document.getElementById('recur-end-count-row').style.display=type==='count'?'block':'none';
+}
+
+// ── People Search ──────────────────────────────────────
+let searchTimer = null;
+
+async function searchPeople(query) {
+  const dropdown = document.getElementById('people-dropdown');
+  if(!dropdown) return;
+  if(!query || query.length < 2){ dropdown.style.display='none'; return; }
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    try{
+      let results = [];
+      if(accessToken){
+        const q = encodeURIComponent(query);
+        const url1 = 'https://graph.microsoft.com/v1.0/users?$select=displayName,mail,userPrincipalName&$top=10&$filter=startswith(displayName,' + "'" + q + "')";
+        const data = await fetch(url1, {headers:{Authorization:'Bearer '+accessToken}}).then(r=>r.json());
+        results = (data.value||[]).map(u=>({name:u.displayName, email:u.mail||u.userPrincipalName}));
+        if(!results.length){
+          const url2 = 'https://graph.microsoft.com/v1.0/me/people?$search=' + q + '&$top=10&$select=displayName,scoredEmailAddresses';
+          const data2 = await fetch(url2, {headers:{Authorization:'Bearer '+accessToken}}).then(r=>r.json());
+          results = (data2.value||[]).map(u=>({
+            name:u.displayName,
+            email:(u.scoredEmailAddresses&&u.scoredEmailAddresses[0])?u.scoredEmailAddresses[0].address:''
+          }));
+        }
+      } else {
+        const sample=['Sarah Chen','Marcus Johnson','Priya Patel','Tom Williams','Lisa Park','Erik Moyer'];
+        results=sample.filter(p=>p.toLowerCase().includes(query.toLowerCase())).map(p=>({name:p,email:p.toLowerCase().replace(' ','.')+'@admoyer.com'}));
+      }
+      if(!results.length){ dropdown.style.display='none'; return; }
+      // Build dropdown items using a safe approach with data attributes
+      dropdown.innerHTML = '';
+      results.forEach(u=>{
+        const div = document.createElement('div');
+        div.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)';
+        div.innerHTML = '<div style="font-weight:500">'+u.name+'</div><div style="font-size:11px;color:var(--text3)">'+(u.email||'')+'</div>';
+        div.onmousedown = function(){ selectPerson(u.name); };
+        div.onmouseover = function(){ this.style.background='#f5f7fa'; };
+        div.onmouseout = function(){ this.style.background=''; };
+        dropdown.appendChild(div);
+      });
+      dropdown.style.display='block';
+    }catch(e){ console.warn('People search error:',e); dropdown.style.display='none'; }
+  }, 300);
+}
+
+function selectPerson(name){
+  const input = document.getElementById('f-assign');
+  if(input) input.value = name;
+  const dropdown = document.getElementById('people-dropdown');
+  if(dropdown) dropdown.style.display='none';
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#f-assign') && !e.target.closest('#people-dropdown')){
+    const dd=document.getElementById('people-dropdown');
+    if(dd) dd.style.display='none';
+  }
+});
+
+// ── Boot ───────────────────────────────────────────────────
+initAuth();
+</script>
+</body>
+</html>
